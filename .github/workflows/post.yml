@@ -1,7 +1,7 @@
 name: Rubika Post
 on:
   schedule:
-    - cron: '30 6,14 * * *'
+    - cron: '30 5-18 * * *'
   workflow_dispatch:
     inputs:
       mode:
