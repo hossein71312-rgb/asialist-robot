@@ -1,4 +1,4 @@
-import io, json, os, random, sys, zipfile
+import json, os, random, sys, time, zipfile
 import requests
 
 TOKEN = os.environ.get("RUBIKA_TOKEN", "")
@@ -69,7 +69,7 @@ def cmd_test():
         print(json.dumps(up, ensure_ascii=False)[:1500])
 
 
-def cmd_post():
+def cmd_post(force):
     cfg = load_cfg()
     z = zipfile.ZipFile("catalog.zip")
     items = json.loads(z.read("catalog.json").decode("utf-8"))
@@ -77,6 +77,15 @@ def cmd_post():
     if os.path.exists("state.json"):
         st = json.load(open("state.json", encoding="utf-8"))
     ids = {p["id"] for p in items}
+    now = time.time()
+    if not force:
+        hour = time.gmtime(now + 12600).tm_hour
+        if not (9 <= hour < 22):
+            print("خارج از ساعت پست")
+            return
+        if now - st.get("last", 0) < 45 * 60:
+            print("هنوز زود است، پست قبلی تازه رفته")
+            return
     posted = [i for i in st["posted"] if i in ids]
     todo = [p for p in items if p["id"] not in posted and p.get("photo")]
     if not todo:
@@ -90,7 +99,7 @@ def cmd_post():
     fid = upload_image(data, p["photo"])
     api("sendFile", {"chat_id": CHAT, "file_id": fid, "text": text})
     posted.append(p["id"])
-    json.dump({"posted": posted}, open("state.json", "w", encoding="utf-8"), ensure_ascii=False)
+    json.dump({"posted": posted, "last": now}, open("state.json", "w", encoding="utf-8"), ensure_ascii=False)
     print("ارسال شد:", p["name"])
 
 
@@ -103,4 +112,4 @@ if __name__ == "__main__":
     else:
         if not CHAT:
             raise SystemExit("RUBIKA_CHAT_ID تنظیم نشده")
-        cmd_post()
+        cmd_post(mode == "force")
